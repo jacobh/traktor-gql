@@ -3,8 +3,29 @@ extern crate xml;
 use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
+use std::rc::{Rc, Weak};
 
 use xml::reader::{EventReader, XmlEvent};
+
+#[allow(dead_code)]
+struct CollectionData {
+    tracks: Vec<Rc<Track>>,
+    artists: Vec<Rc<Artist>>,
+    albums: Vec<Rc<Album>>,
+}
+impl CollectionData {
+    fn new() -> CollectionData {
+        CollectionData {
+            tracks: Vec::new(),
+            artists: Vec::new(),
+            albums: Vec::new(),
+        }
+    }
+    fn add_entry(&mut self, entry: &Entry) {
+        let track = Track::new_from_entry(entry);
+        self.tracks.push(Rc::new(track));
+    }
+}
 
 #[allow(dead_code)]
 struct Artist {
@@ -158,13 +179,13 @@ fn parse_option_str<T>(x: String) -> Option<T>
 }
 
 fn main() {
-    let mut tracks: Vec<Track> = Vec::new();
+    let mut collection_data = CollectionData::new();
     let entries = Entries::new("collection.nml");
 
     println!("parsing collection.nml");
 
     for entry in entries {
-        tracks.push(Track::new_from_entry(&entry));
+        collection_data.add_entry(&entry);
     }
     println!("done!");
 }
