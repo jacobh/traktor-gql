@@ -12,7 +12,7 @@ use xml::reader::{EventReader, XmlEvent};
 struct CollectionData {
     tracks: Vec<Rc<Track>>,
     artists: Vec<Rc<RefCell<Artist>>>,
-    albums: Vec<Rc<Album>>,
+    albums: Vec<Rc<RefCell<Album>>>,
 }
 impl CollectionData {
     fn new() -> CollectionData {
@@ -22,17 +22,17 @@ impl CollectionData {
             albums: Vec::new(),
         }
     }
-    fn get_or_create_album_for_entry(&mut self, entry: &Entry) -> Option<Rc<Album>> {
+    fn get_or_create_album_for_entry(&mut self, entry: &Entry) -> Option<Rc<RefCell<Album>>> {
         let title = get_element_attribute(&entry.elements, "ALBUM", "TITLE");
         match title {
             Some(title) => {
                 match self.albums
                           .iter()
-                          .find(|&x| x.title == title)
+                          .find(|&x| x.borrow().title == title)
                           .map(|x| x.clone()) {
                     Some(album_ref) => Some(album_ref),
                     None => {
-                        let album_ref = Rc::new(Album::new(title));
+                        let album_ref = Rc::new(RefCell::new(Album::new(title)));
                         self.albums.push(album_ref.clone());
                         Some(album_ref)
                     }
@@ -61,8 +61,8 @@ impl CollectionData {
         }
     }
     fn add_entry(&mut self, entry: &Entry) {
-        let mut album_option = self.get_or_create_album_for_entry(entry);
-        let mut artist_option = self.get_or_create_artist_for_entry(entry);
+        let album_option = self.get_or_create_album_for_entry(entry);
+        let artist_option = self.get_or_create_artist_for_entry(entry);
         let track = Rc::new(Track::new(entry, artist_option.clone(), album_option.clone()));
 
         self.tracks.push(track.clone());
@@ -70,27 +70,21 @@ impl CollectionData {
         if let Some(artist) = artist_option {
             let mut artist = artist.borrow_mut();
             artist.add_track(track.clone());
-            if let Some(album) = album_option {
+            if let Some(album) = album_option.clone() {
                 artist.add_album(album.clone());
             }
         }
 
-        // if let Some(mut album) = album_option {
-        //     album.add_track(track_ref.clone());
-        // }
-        // if let Some(mut artist) = artist_option {
-        //     artist.add_track(track_ref.clone());
-        //     if let Some(album) = album_option {
-        //         artist.add_album(album.clone());
-        //     }
-        // }
+        if let Some(album) = album_option {
+            album.borrow_mut().add_track(track.clone());
+        }
     }
 }
 
 #[allow(dead_code)]
 struct Artist {
     name: String,
-    albums: Vec<Weak<Album>>,
+    albums: Vec<Weak<RefCell<Album>>>,
     tracks: Vec<Weak<Track>>,
 }
 impl Artist {
@@ -104,7 +98,7 @@ impl Artist {
     fn add_track(&mut self, track: Rc<Track>) {
         self.tracks.push(Rc::downgrade(&track));
     }
-    fn add_album(&mut self, album: Rc<Album>) {
+    fn add_album(&mut self, album: Rc<RefCell<Album>>) {
         let weak_ref = Rc::downgrade(&album);
         let contains_album = {
             self.albums
@@ -147,13 +141,16 @@ impl PartialEq for Album {
 struct Track {
     title: String,
     artist: Option<Weak<RefCell<Artist>>>,
-    album: Option<Weak<Album>>,
+    album: Option<Weak<RefCell<Album>>>,
     album_track_number: Option<u16>,
     duration_seconds: Option<f64>,
     bpm: Option<f64>,
 }
 impl Track {
-    fn new(entry: &Entry, artist: Option<Rc<RefCell<Artist>>>, album: Option<Rc<Album>>) -> Track {
+    fn new(entry: &Entry,
+           artist: Option<Rc<RefCell<Artist>>>,
+           album: Option<Rc<RefCell<Album>>>)
+           -> Track {
         let elements = &entry.elements;
         Track {
             title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
