@@ -1,0 +1,6 @@
+[package]
+name = "traktor-gql"
+version = "0.1.0"
+authors = ["Jacob Haslehurst <jacob@haslehurst.net>"]
+
+[dependencies]
