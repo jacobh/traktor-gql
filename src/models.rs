@@ -59,20 +59,20 @@ impl CollectionData {
     pub fn add_entry(&mut self, entry: &Entry) {
         let album_option = self.get_or_create_album_for_entry(entry);
         let artist_option = self.get_or_create_artist_for_entry(entry);
-        let track = Rc::new(Track::new(entry, artist_option.clone(), album_option.clone()));
+        let track = Rc::new(Track::new(entry, &artist_option, &album_option));
 
         self.tracks.push(track.clone());
 
         if let Some(artist) = artist_option {
             let mut artist = artist.borrow_mut();
-            artist.add_track(track.clone());
-            if let Some(album) = album_option.clone() {
-                artist.add_album(album.clone());
+            artist.add_track(&track);
+            if let Some(ref album) = album_option {
+                artist.add_album(album);
             }
         }
 
-        if let Some(album) = album_option {
-            album.borrow_mut().add_track(track.clone());
+        if let Some(ref album) = album_option {
+            album.borrow_mut().add_track(&track);
         }
     }
 }
@@ -91,16 +91,16 @@ impl Artist {
             tracks: Vec::new(),
         }
     }
-    fn add_track(&mut self, track: Rc<Track>) {
+    fn add_track(&mut self, track: &Rc<Track>) {
         self.tracks.push(Rc::downgrade(&track));
     }
-    fn add_album(&mut self, album: Rc<RefCell<Album>>) {
-        let weak_ref = Rc::downgrade(&album);
+    fn add_album(&mut self, album: &Rc<RefCell<Album>>) {
+        let weak_ref = Rc::downgrade(album);
         let contains_album = {
             self.albums
                 .iter()
                 .filter(|x| match x.upgrade() {
-                            Some(filter_album) => *filter_album == *album,
+                            Some(filter_album) => filter_album == *album,
                             None => false,
                         })
                 .count() > 0
@@ -123,7 +123,7 @@ impl Album {
             tracks: Vec::new(),
         }
     }
-    fn add_track(&mut self, track: Rc<Track>) {
+    fn add_track(&mut self, track: &Rc<Track>) {
         self.tracks.push(Rc::downgrade(&track));
     }
 }
@@ -144,14 +144,20 @@ pub struct Track {
 }
 impl Track {
     fn new(entry: &Entry,
-           artist: Option<Rc<RefCell<Artist>>>,
-           album: Option<Rc<RefCell<Album>>>)
+           artist: &Option<Rc<RefCell<Artist>>>,
+           album: &Option<Rc<RefCell<Album>>>)
            -> Track {
         let elements = &entry.elements;
         Track {
             title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
-            artist: artist.map(|x| Rc::downgrade(&x)),
-            album: album.map(|x| Rc::downgrade(&x)),
+            artist: match *artist {
+                Some(ref x) => Some(Rc::downgrade(x)),
+                None => None,
+            },
+            album: match *album {
+                Some(ref x) => Some(Rc::downgrade(x)),
+                None => None,
+            },
             album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
                 .and_then(parse_option_str::<u16>),
             duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
