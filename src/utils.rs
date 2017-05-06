@@ -8,3 +8,12 @@ pub fn parse_option_str<T>(x: String) -> Option<T>
         Err(_) => None,
     }
 }
+
+pub fn get_env_var(key: &str) -> Option<String> {
+    for (k, v) in std::env::vars() {
+        if k == key {
+            return Some(v);
+        }
+    }
+    None
+}
