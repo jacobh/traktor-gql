@@ -4,13 +4,14 @@ use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
 use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 
 use xml::reader::{EventReader, XmlEvent};
 
 #[allow(dead_code)]
 struct CollectionData {
     tracks: Vec<Rc<Track>>,
-    artists: Vec<Rc<Artist>>,
+    artists: Vec<Rc<RefCell<Artist>>>,
     albums: Vec<Rc<Album>>,
 }
 impl CollectionData {
@@ -40,17 +41,17 @@ impl CollectionData {
             None => None,
         }
     }
-    fn get_or_create_artist_for_entry(&mut self, entry: &Entry) -> Option<Rc<Artist>> {
+    fn get_or_create_artist_for_entry(&mut self, entry: &Entry) -> Option<Rc<RefCell<Artist>>> {
         let name = get_element_attribute(&entry.elements, "ENTRY", "ARTIST");
         match name {
             Some(name) => {
                 match self.artists
                           .iter()
-                          .find(|&x| x.name == name)
+                          .find(|&x| x.borrow().name == name)
                           .map(|x| x.clone()) {
                     Some(artist_ref) => Some(artist_ref),
                     None => {
-                        let artist_ref = Rc::new(Artist::new(name));
+                        let artist_ref = Rc::new(RefCell::new(Artist::new(name)));
                         self.artists.push(artist_ref.clone());
                         Some(artist_ref)
                     }
@@ -62,9 +63,17 @@ impl CollectionData {
     fn add_entry(&mut self, entry: &Entry) {
         let mut album_option = self.get_or_create_album_for_entry(entry);
         let mut artist_option = self.get_or_create_artist_for_entry(entry);
-        let track_ref = Rc::new(Track::new(entry, artist_option, album_option.clone()));
+        let track = Rc::new(Track::new(entry, artist_option.clone(), album_option.clone()));
 
-        self.tracks.push(track_ref.clone());
+        self.tracks.push(track.clone());
+
+        if let Some(artist) = artist_option {
+            let mut artist = artist.borrow_mut();
+            artist.add_track(track.clone());
+            if let Some(album) = album_option {
+                artist.add_album(album.clone());
+            }
+        }
 
         // if let Some(mut album) = album_option {
         //     album.add_track(track_ref.clone());
@@ -137,14 +146,14 @@ impl PartialEq for Album {
 #[allow(dead_code)]
 struct Track {
     title: String,
-    artist: Option<Weak<Artist>>,
+    artist: Option<Weak<RefCell<Artist>>>,
     album: Option<Weak<Album>>,
     album_track_number: Option<u16>,
     duration_seconds: Option<f64>,
     bpm: Option<f64>,
 }
 impl Track {
-    fn new(entry: &Entry, artist: Option<Rc<Artist>>, album: Option<Rc<Album>>) -> Track {
+    fn new(entry: &Entry, artist: Option<Rc<RefCell<Artist>>>, album: Option<Rc<Album>>) -> Track {
         let elements = &entry.elements;
         Track {
             title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
