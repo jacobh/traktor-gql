@@ -21,8 +21,48 @@ impl CollectionData {
             albums: Vec::new(),
         }
     }
+    fn get_or_create_album_for_entry(&mut self, entry: &Entry) -> Option<Rc<Album>> {
+        let title = get_element_attribute(&entry.elements, "ALBUM", "TITLE");
+        match title {
+            Some(title) => {
+                match self.albums
+                          .iter()
+                          .find(|&x| x.title == title)
+                          .map(|x| x.clone()) {
+                    Some(album_ref) => Some(album_ref),
+                    None => {
+                        let album_ref = Rc::new(Album { title: title });
+                        self.albums.push(album_ref.clone());
+                        Some(album_ref)
+                    }
+                }
+            }
+            None => None,
+        }
+    }
+    fn get_or_create_artist_for_entry(&mut self, entry: &Entry) -> Option<Rc<Artist>> {
+        let name = get_element_attribute(&entry.elements, "ENTRY", "ARTIST");
+        match name {
+            Some(name) => {
+                match self.artists
+                          .iter()
+                          .find(|&x| x.name == name)
+                          .map(|x| x.clone()) {
+                    Some(artist_ref) => Some(artist_ref),
+                    None => {
+                        let artist_ref = Rc::new(Artist { name: name });
+                        self.artists.push(artist_ref.clone());
+                        Some(artist_ref)
+                    }
+                }
+            }
+            None => None,
+        }
+    }
     fn add_entry(&mut self, entry: &Entry) {
-        let track = Track::new_from_entry(entry);
+        let album = self.get_or_create_album_for_entry(entry);
+        let artist = self.get_or_create_artist_for_entry(entry);
+        let track = Track::new(entry, artist, album);
         self.tracks.push(Rc::new(track));
     }
 }
@@ -40,23 +80,19 @@ struct Album {
 #[allow(dead_code)]
 struct Track {
     title: String,
-    artist: Artist,
-    album: Album,
+    artist: Option<Weak<Artist>>,
+    album: Option<Weak<Album>>,
     album_track_number: Option<u16>,
     duration_seconds: Option<f64>,
     bpm: Option<f64>,
 }
 impl Track {
-    fn new_from_entry(entry: &Entry) -> Track {
+    fn new(entry: &Entry, artist: Option<Rc<Artist>>, album: Option<Rc<Album>>) -> Track {
         let elements = &entry.elements;
         Track {
             title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
-            artist: Artist {
-                name: get_element_attribute(elements, "ENTRY", "ARTIST").unwrap_or(String::new()),
-            },
-            album: Album {
-                title: get_element_attribute(elements, "ALBUM", "TITLE").unwrap_or(String::new()),
-            },
+            artist: artist.map(|x| Rc::downgrade(&x)),
+            album: album.map(|x| Rc::downgrade(&x)),
             album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
                 .and_then(parse_option_str::<u16>),
             duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
@@ -188,4 +224,7 @@ fn main() {
         collection_data.add_entry(&entry);
     }
     println!("done!");
+    println!("tracks:  {}", collection_data.tracks.len());
+    println!("artists: {}", collection_data.artists.len());
+    println!("albums:  {}", collection_data.albums.len());
 }
