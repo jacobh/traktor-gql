@@ -31,7 +31,7 @@ impl CollectionData {
                           .map(|x| x.clone()) {
                     Some(album_ref) => Some(album_ref),
                     None => {
-                        let album_ref = Rc::new(Album { title: title });
+                        let album_ref = Rc::new(Album::new(title));
                         self.albums.push(album_ref.clone());
                         Some(album_ref)
                     }
@@ -50,7 +50,7 @@ impl CollectionData {
                           .map(|x| x.clone()) {
                     Some(artist_ref) => Some(artist_ref),
                     None => {
-                        let artist_ref = Rc::new(Artist { name: name });
+                        let artist_ref = Rc::new(Artist::new(name));
                         self.artists.push(artist_ref.clone());
                         Some(artist_ref)
                     }
@@ -60,21 +60,78 @@ impl CollectionData {
         }
     }
     fn add_entry(&mut self, entry: &Entry) {
-        let album = self.get_or_create_album_for_entry(entry);
-        let artist = self.get_or_create_artist_for_entry(entry);
-        let track = Track::new(entry, artist, album);
-        self.tracks.push(Rc::new(track));
+        let mut album_option = self.get_or_create_album_for_entry(entry);
+        let mut artist_option = self.get_or_create_artist_for_entry(entry);
+        let track_ref = Rc::new(Track::new(entry, artist_option, album_option.clone()));
+
+        self.tracks.push(track_ref.clone());
+
+        // if let Some(mut album) = album_option {
+        //     album.add_track(track_ref.clone());
+        // }
+        // if let Some(mut artist) = artist_option {
+        //     artist.add_track(track_ref.clone());
+        //     if let Some(album) = album_option {
+        //         artist.add_album(album.clone());
+        //     }
+        // }
     }
 }
 
 #[allow(dead_code)]
 struct Artist {
     name: String,
+    albums: Vec<Weak<Album>>,
+    tracks: Vec<Weak<Track>>,
+}
+impl Artist {
+    fn new(name: String) -> Artist {
+        Artist {
+            name: name,
+            albums: Vec::new(),
+            tracks: Vec::new(),
+        }
+    }
+    fn add_track(&mut self, track: Rc<Track>) {
+        self.tracks.push(Rc::downgrade(&track));
+    }
+    fn add_album(&mut self, album: Rc<Album>) {
+        let weak_ref = Rc::downgrade(&album);
+        let contains_album = {
+            self.albums
+                .iter()
+                .filter(|x| match x.upgrade() {
+                            Some(filter_album) => *filter_album == *album,
+                            None => false,
+                        })
+                .count() > 0
+        };
+        if !contains_album {
+            self.albums.push(weak_ref);
+        }
+    }
 }
 
 #[allow(dead_code)]
 struct Album {
     title: String,
+    tracks: Vec<Weak<Track>>,
+}
+impl Album {
+    fn new(title: String) -> Album {
+        Album {
+            title: title,
+            tracks: Vec::new(),
+        }
+    }
+    fn add_track(&mut self, track: Rc<Track>) {
+        self.tracks.push(Rc::downgrade(&track));
+    }
+}
+impl PartialEq for Album {
+    fn eq(&self, other: &Album) -> bool {
+        self.title == other.title
+    }
 }
 
 #[allow(dead_code)]
