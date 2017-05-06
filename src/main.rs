@@ -7,10 +7,20 @@ use std::io::BufReader;
 use xml::reader::{EventReader, XmlEvent};
 
 #[allow(dead_code)]
+struct Artist {
+    name: String,
+}
+
+#[allow(dead_code)]
+struct Album {
+    title: String,
+}
+
+#[allow(dead_code)]
 struct Track {
     title: String,
-    artist_name: String,
-    album_title: String,
+    artist: Artist,
+    album: Album,
     album_track_number: Option<u16>,
     duration_seconds: Option<f64>,
     bpm: Option<f64>,
@@ -20,9 +30,12 @@ impl Track {
         let elements = &entry.elements;
         Track {
             title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
-            artist_name: get_element_attribute(elements, "ENTRY", "ARTIST")
-                .unwrap_or(String::new()),
-            album_title: get_element_attribute(elements, "ALBUM", "TITLE").unwrap_or(String::new()),
+            artist: Artist {
+                name: get_element_attribute(elements, "ENTRY", "ARTIST").unwrap_or(String::new()),
+            },
+            album: Album {
+                title: get_element_attribute(elements, "ALBUM", "TITLE").unwrap_or(String::new()),
+            },
             album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
                 .and_then(parse_option_str::<u16>),
             duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
