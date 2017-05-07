@@ -27,34 +27,37 @@ impl CollectionParser {
 impl Iterator for CollectionParser {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
-        let mut entry_elements = NodeElements::new();
+        let mut node_elements = NodeElements::new();
         loop {
             match self._parser.next() {
                 Ok(e) => {
                     match e {
                         XmlEvent::StartElement { .. } => {
-                            match entry_elements.is_empty() {
+                            match node_elements.is_empty() {
                                 true => {
-                                    let is_entry = {
+                                    let is_first_element_of_node = {
                                         match e {
                                             XmlEvent::StartElement { ref name, .. } => {
-                                                name.local_name == "ENTRY"
+                                                name.local_name == "ENTRY" ||
+                                                name.local_name == "NODE"
                                             }
                                             _ => false,
                                         }
                                     };
-                                    if is_entry {
-                                        entry_elements.push(e);
+                                    if is_first_element_of_node {
+                                        node_elements.push(e);
                                     }
                                 }
                                 false => {
-                                    entry_elements.push(e);
+                                    node_elements.push(e);
                                 }
                             }
                         }
                         XmlEvent::EndElement { name } => {
-                            if name.local_name == "ENTRY" {
-                                return Some(Node::Track { elements: entry_elements });
+                            match name.local_name.as_ref() {
+                                "ENTRY" => return Some(Node::Track { elements: node_elements }),
+                                "NODE" => return Some(Node::Playlist { elements: node_elements }),
+                                _ => {}
                             }
                         }
                         XmlEvent::EndDocument => {
