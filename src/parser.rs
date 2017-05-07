@@ -12,7 +12,14 @@ pub enum Node {
     Playlist { elements: NodeElements },
 }
 
+enum RootNode {
+    None,
+    Collection,
+    Playlists,
+}
+
 pub struct CollectionParser {
+    _current_root_node: RootNode,
     _parser: EventReader<std::io::BufReader<File>>,
 }
 
@@ -20,7 +27,10 @@ impl CollectionParser {
     pub fn new<P: AsRef<Path>>(collection_path: P) -> CollectionParser {
         let file = File::open(collection_path).unwrap();
         let file = BufReader::new(file);
-        CollectionParser { _parser: EventReader::new(file) }
+        CollectionParser {
+            _current_root_node: RootNode::None,
+            _parser: EventReader::new(file),
+        }
     }
 }
 
