@@ -6,12 +6,12 @@ mod utils;
 
 fn main() {
     let mut collection_data = models::CollectionData::new();
-    let entries = parser::Entries::new("collection.nml");
+    let collection_parser = parser::CollectionParser::new("collection.nml");
 
     println!("parsing collection.nml");
 
-    for entry in entries {
-        collection_data.add_entry(&entry);
+    for node in collection_parser {
+        collection_data.add_node(&node);
     }
     println!("done!");
     println!("tracks:  {}", collection_data.tracks.len());

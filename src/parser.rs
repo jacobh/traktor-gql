@@ -5,28 +5,29 @@ use std::path::Path;
 use xml;
 use xml::reader::{EventReader, XmlEvent};
 
-type EntryElements = Vec<XmlEvent>;
+pub type NodeElements = Vec<XmlEvent>;
 
-pub struct Entry {
-    pub elements: EntryElements,
+pub enum Node {
+    Track { elements: NodeElements },
+    Playlist { elements: NodeElements },
 }
 
-pub struct Entries {
+pub struct CollectionParser {
     _parser: EventReader<std::io::BufReader<File>>,
 }
 
-impl Entries {
-    pub fn new<P: AsRef<Path>>(collection_path: P) -> Entries {
+impl CollectionParser {
+    pub fn new<P: AsRef<Path>>(collection_path: P) -> CollectionParser {
         let file = File::open(collection_path).unwrap();
         let file = BufReader::new(file);
-        Entries { _parser: EventReader::new(file) }
+        CollectionParser { _parser: EventReader::new(file) }
     }
 }
 
-impl Iterator for Entries {
-    type Item = Entry;
-    fn next(&mut self) -> Option<Entry> {
-        let mut entry_elements = EntryElements::new();
+impl Iterator for CollectionParser {
+    type Item = Node;
+    fn next(&mut self) -> Option<Node> {
+        let mut entry_elements = NodeElements::new();
         loop {
             match self._parser.next() {
                 Ok(e) => {
@@ -53,7 +54,7 @@ impl Iterator for Entries {
                         }
                         XmlEvent::EndElement { name } => {
                             if name.local_name == "ENTRY" {
-                                return Some(Entry { elements: entry_elements });
+                                return Some(Node::Track { elements: entry_elements });
                             }
                         }
                         XmlEvent::EndDocument => {
@@ -72,7 +73,7 @@ impl Iterator for Entries {
     }
 }
 
-fn get_element_with_name<'a, 'b>(elements: &'a EntryElements,
+fn get_element_with_name<'a, 'b>(elements: &'a NodeElements,
                                  lookup_name: &'b str)
                                  -> Option<&'a XmlEvent> {
     elements
@@ -90,7 +91,7 @@ fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>, key: &str) ->
         .and_then(|x| Some(x.value.clone()))
 }
 
-pub fn get_element_attribute(elements: &EntryElements,
+pub fn get_element_attribute(elements: &NodeElements,
                              element_name: &str,
                              attribute_key: &str)
                              -> Option<String> {
