@@ -59,20 +59,23 @@ impl CollectionData {
     pub fn add_entry(&mut self, entry: &Entry) {
         let album_option = self.get_or_create_album_for_entry(entry);
         let artist_option = self.get_or_create_artist_for_entry(entry);
-        let track = Rc::new(Track::new(entry, &artist_option, &album_option));
+        match Track::new(entry, &artist_option, &album_option) {
+            Ok(track_inst) => {
+                let track = Rc::new(track_inst);
 
-        self.tracks.push(track.clone());
-
-        if let Some(artist) = artist_option {
-            let mut artist = artist.borrow_mut();
-            artist.add_track(&track);
-            if let Some(ref album) = album_option {
-                artist.add_album(album);
+                self.tracks.push(track.clone());
+                if let Some(artist) = artist_option {
+                    let mut artist = artist.borrow_mut();
+                    artist.add_track(&track);
+                    if let Some(ref album) = album_option {
+                        artist.add_album(album);
+                    }
+                }
+                if let Some(ref album) = album_option {
+                    album.borrow_mut().add_track(&track);
+                }
             }
-        }
-
-        if let Some(ref album) = album_option {
-            album.borrow_mut().add_track(&track);
+            Err(_) => {}
         }
     }
 }
@@ -152,24 +155,30 @@ impl Track {
     fn new(entry: &Entry,
            artist: &Option<Rc<RefCell<Artist>>>,
            album: &Option<Rc<RefCell<Album>>>)
-           -> Track {
+           -> Result<Track, &'static str> {
         let elements = &entry.elements;
-        Track {
-            title: get_element_attribute(elements, "ENTRY", "TITLE").unwrap_or(String::new()),
-            artist: match *artist {
-                Some(ref x) => Some(Rc::downgrade(x)),
-                None => None,
-            },
-            album: match *album {
-                Some(ref x) => Some(Rc::downgrade(x)),
-                None => None,
-            },
-            album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
-                .and_then(parse_option_str::<u16>),
-            duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
-                .and_then(parse_option_str::<f64>),
-            bpm: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
-                .and_then(parse_option_str::<f64>),
+
+        let title = get_element_attribute(elements, "ENTRY", "TITLE");
+        if title.is_none() {
+            return Err("ENTRY does not have title");
         }
+
+        Ok(Track {
+               title: title.unwrap(),
+               artist: match *artist {
+                   Some(ref x) => Some(Rc::downgrade(x)),
+                   None => None,
+               },
+               album: match *album {
+                   Some(ref x) => Some(Rc::downgrade(x)),
+                   None => None,
+               },
+               album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
+                   .and_then(parse_option_str::<u16>),
+               duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
+                   .and_then(parse_option_str::<f64>),
+               bpm: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
+                   .and_then(parse_option_str::<f64>),
+           })
     }
 }
