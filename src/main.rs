@@ -17,4 +17,12 @@ fn main() {
     println!("tracks:  {}", collection_data.tracks.len());
     println!("artists: {}", collection_data.artists.len());
     println!("albums:  {}", collection_data.albums.len());
+
+    for artist in collection_data.artists {
+        println!("{}", artist.borrow().name);
+        for track in artist.borrow().get_tracks() {
+            println!("    {}", track.title);
+        }
+        println!("");
+    }
 }

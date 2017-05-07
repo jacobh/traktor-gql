@@ -79,7 +79,7 @@ impl CollectionData {
 
 #[allow(dead_code)]
 pub struct Artist {
-    name: String,
+    pub name: String,
     albums: Vec<Weak<RefCell<Album>>>,
     tracks: Vec<Weak<Track>>,
 }
@@ -109,6 +109,12 @@ impl Artist {
             self.albums.push(weak_ref);
         }
     }
+    pub fn get_tracks(&self) -> Vec<Rc<Track>> {
+        self.tracks
+            .iter()
+            .filter_map(|x| x.upgrade())
+            .collect()
+    }
 }
 
 #[allow(dead_code)]
@@ -135,7 +141,7 @@ impl PartialEq for Album {
 
 #[allow(dead_code)]
 pub struct Track {
-    title: String,
+    pub title: String,
     artist: Option<Weak<RefCell<Artist>>>,
     album: Option<Weak<RefCell<Album>>>,
     album_track_number: Option<u16>,
