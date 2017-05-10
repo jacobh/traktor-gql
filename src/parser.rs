@@ -6,10 +6,17 @@ use xml;
 use xml::reader::{EventReader, XmlEvent};
 
 pub type NodeElements = Vec<XmlEvent>;
+type NodeAttributes = Vec<xml::attribute::OwnedAttribute>;
 
-pub enum Node {
-    Track { elements: NodeElements },
-    Playlist { elements: NodeElements },
+pub enum NodeType {
+    Track,
+    Playlist,
+}
+
+pub struct Node {
+    pub node_type: NodeType,
+    pub attributes: NodeAttributes,
+    pub elements: NodeElements,
 }
 
 enum RootNode {
@@ -38,39 +45,69 @@ impl Iterator for CollectionParser {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
         let mut node_elements = NodeElements::new();
+        let mut node_attributes = NodeAttributes::new();
         loop {
             match self._parser.next() {
                 Ok(e) => {
                     match e {
                         XmlEvent::StartElement { .. } => {
-                            match node_elements.is_empty() {
-                                true => {
-                                    let is_first_element_of_node = {
+                            match self._current_root_node {
+                                RootNode::None => {
+                                    self._current_root_node = {
                                         match e {
                                             XmlEvent::StartElement { ref name, .. } => {
-                                                name.local_name == "ENTRY" ||
-                                                name.local_name == "NODE"
+                                                match name.local_name.as_ref() {
+                                                    "COLLECTION" => RootNode::Collection,
+                                                    "PLAYLISTS" => RootNode::Playlists,
+                                                    _ => RootNode::None,
+                                                }
                                             }
-                                            _ => false,
+                                            _ => RootNode::None,
                                         }
                                     };
-                                    if is_first_element_of_node {
-                                        node_elements.push(e);
+                                    continue;
+                                }
+                                RootNode::Collection => {
+                                    match node_attributes.is_empty() {
+                                        true => {
+                                            if let XmlEvent::StartElement { attributes, .. } = e {
+                                                node_attributes = attributes;
+                                            }
+                                        }
+                                        false => {
+                                            node_elements.push(e);
+                                        }
                                     }
                                 }
-                                false => {
-                                    node_elements.push(e);
-                                }
+                                _ => {}
                             }
                         }
                         XmlEvent::EndElement { name } => {
                             match name.local_name.as_ref() {
-                                "ENTRY" => return Some(Node::Track { elements: node_elements }),
-                                "NODE" => return Some(Node::Playlist { elements: node_elements }),
+                                "COLLECTION" | "PLAYLISTS" => {
+                                    assert!(node_attributes.is_empty());
+                                    assert!(node_elements.is_empty());
+                                    self._current_root_node = RootNode::None;
+                                }
+                                "ENTRY" => {
+                                    return Some(Node {
+                                                    node_type: NodeType::Track,
+                                                    attributes: node_attributes,
+                                                    elements: node_elements,
+                                                })
+                                }
+                                "NODE" => {
+                                    return Some(Node {
+                                                    node_type: NodeType::Playlist,
+                                                    attributes: node_attributes,
+                                                    elements: node_elements,
+                                                })
+                                }
                                 _ => {}
                             }
                         }
                         XmlEvent::EndDocument => {
+                            println!("end of doc");
                             break;
                         }
                         _ => {}
@@ -97,7 +134,9 @@ fn get_element_with_name<'a, 'b>(elements: &'a NodeElements,
               })
 }
 
-fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>, key: &str) -> Option<String> {
+pub fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>,
+                     key: &str)
+                     -> Option<String> {
     attributes
         .iter()
         .find(|&x| x.name.local_name == key)

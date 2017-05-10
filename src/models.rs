@@ -1,7 +1,7 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-use parser::{Node, NodeElements, get_element_attribute};
+use parser::{Node, NodeType, get_attribute, get_element_attribute};
 use utils::parse_option_str;
 
 #[allow(dead_code)]
@@ -18,10 +18,8 @@ impl CollectionData {
             albums: Vec::new(),
         }
     }
-    fn get_or_create_album_for_node(&mut self,
-                                    node_elements: &NodeElements)
-                                    -> Option<Rc<RefCell<Album>>> {
-        let title = get_element_attribute(&node_elements, "ALBUM", "TITLE");
+    fn get_or_create_album_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Album>>> {
+        let title = get_element_attribute(&node.elements, "ALBUM", "TITLE");
         match title {
             Some(title) => {
                 match self.albums
@@ -39,10 +37,8 @@ impl CollectionData {
             None => None,
         }
     }
-    fn get_or_create_artist_for_node(&mut self,
-                                     node_elements: &NodeElements)
-                                     -> Option<Rc<RefCell<Artist>>> {
-        let name = get_element_attribute(&node_elements, "ENTRY", "ARTIST");
+    fn get_or_create_artist_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Artist>>> {
+        let name = get_attribute(&node.attributes, "ARTIST");
         match name {
             Some(name) => {
                 match self.artists
@@ -60,10 +56,10 @@ impl CollectionData {
             None => None,
         }
     }
-    fn add_track_node_elements(&mut self, node_elements: &NodeElements) {
-        let album_option = self.get_or_create_album_for_node(node_elements);
-        let artist_option = self.get_or_create_artist_for_node(node_elements);
-        match Track::new(node_elements, &artist_option, &album_option) {
+    fn add_track_node(&mut self, node: &Node) {
+        let album_option = self.get_or_create_album_for_node(node);
+        let artist_option = self.get_or_create_artist_for_node(node);
+        match Track::new(node, &artist_option, &album_option) {
             Ok(track_inst) => {
                 let track = Rc::new(track_inst);
 
@@ -83,11 +79,11 @@ impl CollectionData {
         }
     }
     pub fn add_node(&mut self, node: &Node) {
-        match *node {
-            Node::Track { ref elements } => {
-                self.add_track_node_elements(elements);
+        match node.node_type {
+            NodeType::Track => {
+                self.add_track_node(&node);
             }
-            Node::Playlist { .. } => {}
+            NodeType::Playlist => {}
         }
     }
 }
@@ -164,11 +160,11 @@ pub struct Track {
     bpm: Option<f64>,
 }
 impl Track {
-    fn new(elements: &NodeElements,
+    fn new(node: &Node,
            artist: &Option<Rc<RefCell<Artist>>>,
            album: &Option<Rc<RefCell<Album>>>)
            -> Result<Track, &'static str> {
-        let title = get_element_attribute(elements, "ENTRY", "TITLE");
+        let title = get_attribute(&node.attributes, "TITLE");
         if title.is_none() {
             return Err("ENTRY does not have title");
         }
@@ -183,11 +179,11 @@ impl Track {
                    Some(ref x) => Some(Rc::downgrade(x)),
                    None => None,
                },
-               album_track_number: get_element_attribute(elements, "ALBUM", "TRACK")
+               album_track_number: get_element_attribute(&node.elements, "ALBUM", "TRACK")
                    .and_then(parse_option_str::<u16>),
-               duration_seconds: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
+               duration_seconds: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
                    .and_then(parse_option_str::<f64>),
-               bpm: get_element_attribute(elements, "INFO", "PLAYTIME_FLOAT")
+               bpm: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
                    .and_then(parse_option_str::<f64>),
            })
     }
