@@ -1,6 +1,8 @@
 [package]
 name = "traktor"
 version = "0.1.0"
+license = "MIT"
+description = "Library to interact with Traktor collections and playlists"
 authors = ["Jacob Haslehurst <jacob@haslehurst.net>"]
 
 [dependencies]
