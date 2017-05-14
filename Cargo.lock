@@ -1,5 +1,5 @@
 [root]
-name = "traktor-gql"
+name = "traktor"
 version = "0.1.0"
 dependencies = [
  "xml-rs 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",

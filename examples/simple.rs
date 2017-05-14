@@ -1,8 +1,6 @@
-extern crate xml;
+extern crate traktor;
 
-mod models;
-mod parser;
-mod utils;
+use traktor::{models, parser};
 
 fn main() {
     let mut collection_data = models::CollectionData::new();
