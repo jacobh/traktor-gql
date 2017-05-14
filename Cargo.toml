@@ -1,5 +1,5 @@
 [package]
-name = "traktor-gql"
+name = "traktor"
 version = "0.1.0"
 authors = ["Jacob Haslehurst <jacob@haslehurst.net>"]
 
