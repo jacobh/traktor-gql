@@ -171,14 +171,8 @@ impl Track {
 
         Ok(Track {
                title: title.unwrap(),
-               artist: match *artist {
-                   Some(ref x) => Some(Rc::downgrade(x)),
-                   None => None,
-               },
-               album: match *album {
-                   Some(ref x) => Some(Rc::downgrade(x)),
-                   None => None,
-               },
+               artist: artist.as_ref().map(|x| Rc::downgrade(x)),
+               album: album.as_ref().map(|x| Rc::downgrade(x)),
                album_track_number: get_element_attribute(&node.elements, "ALBUM", "TRACK")
                    .and_then(parse_option_str::<u16>),
                duration_seconds: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
