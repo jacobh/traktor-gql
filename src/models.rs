@@ -1,7 +1,7 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-use parser::{Node, NodeType, get_attribute, get_element_attribute};
+use parser::{Node, NodeType, get_attribute, get_elements_attribute};
 
 #[allow(dead_code)]
 pub struct CollectionData {
@@ -18,7 +18,7 @@ impl CollectionData {
         }
     }
     fn get_or_create_album_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Album>>> {
-        let title = get_element_attribute(&node.elements, "ALBUM", "TITLE");
+        let title = get_elements_attribute(&node.elements, "ALBUM", "TITLE");
         match title {
             Some(title) => {
                 match self.albums
@@ -172,11 +172,11 @@ impl Track {
                title: title.unwrap(),
                artist: artist.as_ref().map(|x| Rc::downgrade(x)),
                album: album.as_ref().map(|x| Rc::downgrade(x)),
-               album_track_number: get_element_attribute(&node.elements, "ALBUM", "TRACK")
+               album_track_number: get_elements_attribute(&node.elements, "ALBUM", "TRACK")
                    .and_then(|x| x.parse().ok()),
-               duration_seconds: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
+               duration_seconds: get_elements_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
                    .and_then(|x| x.parse().ok()),
-               bpm: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
+               bpm: get_elements_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
                    .and_then(|x| x.parse().ok()),
            })
     }
