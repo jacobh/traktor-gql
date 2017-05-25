@@ -2,7 +2,6 @@ use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
 use parser::{Node, NodeType, get_attribute, get_element_attribute};
-use utils::parse_option_str;
 
 #[allow(dead_code)]
 pub struct CollectionData {
@@ -174,11 +173,11 @@ impl Track {
                artist: artist.as_ref().map(|x| Rc::downgrade(x)),
                album: album.as_ref().map(|x| Rc::downgrade(x)),
                album_track_number: get_element_attribute(&node.elements, "ALBUM", "TRACK")
-                   .and_then(parse_option_str::<u16>),
+                   .and_then(|x| x.parse().ok()),
                duration_seconds: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
-                   .and_then(parse_option_str::<f64>),
+                   .and_then(|x| x.parse().ok()),
                bpm: get_element_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
-                   .and_then(parse_option_str::<f64>),
+                   .and_then(|x| x.parse().ok()),
            })
     }
 }
