@@ -27,11 +27,11 @@ impl CollectionData {
                           .iter()
                           .find(|&x| x.borrow().title == title)
                           .map(|x| x.clone()) {
-                    Some(album_ref) => Some(album_ref),
+                    Some(album) => Some(album),
                     None => {
-                        let album_ref = Rc::new(RefCell::new(Album::new(title)));
-                        self.albums.push(album_ref.clone());
-                        Some(album_ref)
+                        let album = Rc::new(RefCell::new(Album::new(title)));
+                        self.albums.push(album.clone());
+                        Some(album)
                     }
                 }
             }
@@ -46,11 +46,11 @@ impl CollectionData {
                           .iter()
                           .find(|&x| x.borrow().name == name)
                           .map(|x| x.clone()) {
-                    Some(artist_ref) => Some(artist_ref),
+                    Some(artist) => Some(artist),
                     None => {
-                        let artist_ref = Rc::new(RefCell::new(Artist::new(name)));
-                        self.artists.push(artist_ref.clone());
-                        Some(artist_ref)
+                        let artist = Rc::new(RefCell::new(Artist::new(name)));
+                        self.artists.push(artist.clone());
+                        Some(artist)
                     }
                 }
             }
@@ -58,21 +58,21 @@ impl CollectionData {
         }
     }
     fn add_track_node(&mut self, node: &Node) {
-        let album_option = self.get_or_create_album_for_node(node);
-        let artist_option = self.get_or_create_artist_for_node(node);
-        match Track::new(node, &artist_option, &album_option) {
-            Ok(track_inst) => {
-                let track = Rc::new(track_inst);
+        let album = self.get_or_create_album_for_node(node);
+        let artist = self.get_or_create_artist_for_node(node);
+        match Track::new(node, &artist, &album) {
+            Ok(track) => {
+                let track = Rc::new(track);
 
                 self.tracks.push(track.clone());
-                if let Some(artist) = artist_option {
+                if let Some(artist) = artist {
                     let mut artist = artist.borrow_mut();
                     artist.add_track(&track);
-                    if let Some(ref album) = album_option {
+                    if let Some(ref album) = album {
                         artist.add_album(album);
                     }
                 }
-                if let Some(ref album) = album_option {
+                if let Some(ref album) = album {
                     album.borrow_mut().add_track(&track);
                 }
             }
