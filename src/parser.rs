@@ -143,19 +143,19 @@ pub fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>,
         .and_then(|x| Some(x.value.clone()))
 }
 
+pub fn get_element_attribute(element: &XmlEvent, attribute_key: &str) -> Option<String> {
+    match element {
+        &XmlEvent::StartElement { ref attributes, .. } => get_attribute(&attributes, attribute_key),
+        _ => None,
+    }
+}
+
 pub fn get_elements_attribute(elements: &NodeElements,
                               element_name: &str,
                               attribute_key: &str)
                               -> Option<String> {
     match get_element_with_name(elements, element_name) {
-        Some(element) => {
-            match element {
-                &XmlEvent::StartElement { ref attributes, .. } => {
-                    get_attribute(&attributes, attribute_key)
-                }
-                _ => None,
-            }
-        }
+        Some(element) => get_element_attribute(element, attribute_key),
         _ => None,
     }
 }
