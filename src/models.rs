@@ -1,13 +1,14 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-use parser::{Node, NodeType, get_attribute, get_elements_attribute};
+use parser::{Node, NodeType, get_attribute, get_element_attribute, get_elements_attribute};
 
 #[allow(dead_code)]
 pub struct CollectionData {
     pub tracks: Vec<Rc<Track>>,
     pub artists: Vec<Rc<RefCell<Artist>>>,
     pub albums: Vec<Rc<RefCell<Album>>>,
+    pub playlists: Vec<Rc<RefCell<Playlist>>>,
 }
 impl CollectionData {
     pub fn new() -> CollectionData {
@@ -15,6 +16,7 @@ impl CollectionData {
             tracks: Vec::new(),
             artists: Vec::new(),
             albums: Vec::new(),
+            playlists: Vec::new(),
         }
     }
     fn get_or_create_album_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Album>>> {
@@ -77,12 +79,27 @@ impl CollectionData {
             Err(_) => {}
         }
     }
+    fn add_playlist_node(&mut self, node: &Node) {
+        let primary_keys: Vec<String> = node.elements
+            .iter()
+            .filter_map(|elem| get_element_attribute(elem, "KEY"))
+            .collect();
+
+        println!("tracks in playlist: {}", primary_keys.len());
+
+        if let Some(name) = get_attribute(&node.attributes, "NAME") {
+            self.playlists
+                .push(Rc::new(RefCell::new(Playlist::new(name))));
+        }
+    }
     pub fn add_node(&mut self, node: &Node) {
         match node.node_type {
             NodeType::Track => {
                 self.add_track_node(&node);
             }
-            NodeType::Playlist => {}
+            NodeType::Playlist => {
+                self.add_playlist_node(&node);
+            }
         }
     }
 }
@@ -179,5 +196,19 @@ impl Track {
                bpm: get_elements_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
                    .and_then(|x| x.parse().ok()),
            })
+    }
+}
+
+#[allow(dead_code)]
+pub struct Playlist {
+    pub name: String,
+    tracks: Vec<Weak<Track>>,
+}
+impl Playlist {
+    fn new(name: String) -> Playlist {
+        Playlist {
+            name: name,
+            tracks: vec![],
+        }
     }
 }

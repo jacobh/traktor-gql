@@ -19,6 +19,7 @@ pub struct Node {
     pub elements: NodeElements,
 }
 
+#[derive(PartialEq)]
 enum RootNode {
     None,
     Collection,
@@ -67,7 +68,7 @@ impl Iterator for CollectionParser {
                                     };
                                     continue;
                                 }
-                                RootNode::Collection => {
+                                _ => {
                                     match node_attributes.is_empty() {
                                         true => {
                                             if let XmlEvent::StartElement { attributes, .. } = e {
@@ -79,7 +80,6 @@ impl Iterator for CollectionParser {
                                         }
                                     }
                                 }
-                                _ => {}
                             }
                         }
                         XmlEvent::EndElement { name } => {
@@ -90,18 +90,22 @@ impl Iterator for CollectionParser {
                                     self._current_root_node = RootNode::None;
                                 }
                                 "ENTRY" => {
-                                    return Some(Node {
-                                                    node_type: NodeType::Track,
-                                                    attributes: node_attributes,
-                                                    elements: node_elements,
-                                                })
+                                    if self._current_root_node == RootNode::Collection {
+                                        return Some(Node {
+                                                        node_type: NodeType::Track,
+                                                        attributes: node_attributes,
+                                                        elements: node_elements,
+                                                    });
+                                    }
                                 }
                                 "NODE" => {
-                                    return Some(Node {
-                                                    node_type: NodeType::Playlist,
-                                                    attributes: node_attributes,
-                                                    elements: node_elements,
-                                                })
+                                    if self._current_root_node == RootNode::Playlists {
+                                        return Some(Node {
+                                                        node_type: NodeType::Playlist,
+                                                        attributes: node_attributes,
+                                                        elements: node_elements,
+                                                    });
+                                    }
                                 }
                                 _ => {}
                             }
