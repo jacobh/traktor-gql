@@ -18,6 +18,26 @@ pub struct Node {
     pub attributes: NodeAttributes,
     pub elements: NodeElements,
 }
+impl Node {
+    pub fn get_attribute(&self, key: &str) -> Option<String> {
+        get_attribute(&self.attributes, key)
+    }
+    pub fn get_element_with_name<'a, 'b>(&'a self, lookup_name: &'b str) -> Option<&'a XmlEvent> {
+        self.elements
+            .iter()
+            .find(|x| match *x {
+                      &XmlEvent::StartElement { ref name, .. } => &name.local_name == lookup_name,
+                      _ => false,
+                  })
+    }
+    pub fn get_elements_attribute(&self,
+                                  element_name: &str,
+                                  attribute_key: &str)
+                                  -> Option<String> {
+        self.get_element_with_name(element_name)
+            .and_then(|element| get_element_attribute(element, attribute_key))
+    }
+}
 
 #[derive(PartialEq)]
 enum RootNode {
@@ -144,17 +164,6 @@ impl Iterator for CollectionParser {
     }
 }
 
-pub fn get_element_with_name<'a, 'b>(elements: &'a NodeElements,
-                                     lookup_name: &'b str)
-                                     -> Option<&'a XmlEvent> {
-    elements
-        .iter()
-        .find(|x| match *x {
-                  &XmlEvent::StartElement { ref name, .. } => &name.local_name == lookup_name,
-                  _ => false,
-              })
-}
-
 pub fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>,
                      key: &str)
                      -> Option<String> {
@@ -167,16 +176,6 @@ pub fn get_attribute(attributes: &Vec<xml::attribute::OwnedAttribute>,
 pub fn get_element_attribute(element: &XmlEvent, attribute_key: &str) -> Option<String> {
     match element {
         &XmlEvent::StartElement { ref attributes, .. } => get_attribute(&attributes, attribute_key),
-        _ => None,
-    }
-}
-
-pub fn get_elements_attribute(elements: &NodeElements,
-                              element_name: &str,
-                              attribute_key: &str)
-                              -> Option<String> {
-    match get_element_with_name(elements, element_name) {
-        Some(element) => get_element_attribute(element, attribute_key),
         _ => None,
     }
 }

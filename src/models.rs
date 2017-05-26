@@ -2,8 +2,7 @@ use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use parser::{Node, NodeType, get_element_with_name, get_attribute, get_element_attribute,
-             get_elements_attribute};
+use parser::{Node, NodeType, get_element_attribute};
 
 #[allow(dead_code)]
 pub struct CollectionData {
@@ -28,7 +27,7 @@ impl CollectionData {
             .collect()
     }
     fn get_or_create_album_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Album>>> {
-        let title = get_elements_attribute(&node.elements, "ALBUM", "TITLE");
+        let title = node.get_elements_attribute("ALBUM", "TITLE");
         match title {
             Some(title) => {
                 match self.albums
@@ -47,7 +46,7 @@ impl CollectionData {
         }
     }
     fn get_or_create_artist_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Artist>>> {
-        let name = get_attribute(&node.attributes, "ARTIST");
+        let name = node.get_attribute("ARTIST");
         match name {
             Some(name) => {
                 match self.artists
@@ -100,7 +99,7 @@ impl CollectionData {
 
         println!("tracks in playlist: {}", tracks.len());
 
-        if let Some(name) = get_attribute(&node.attributes, "NAME") {
+        if let Some(name) = node.get_attribute("NAME") {
             self.playlists.push(Rc::new(Playlist::new(name, tracks)));
         }
     }
@@ -186,7 +185,8 @@ struct TrackLocation {
 }
 impl TrackLocation {
     fn new_from_node(node: &Node) -> TrackLocation {
-        let elem = get_element_with_name(&node.elements, "LOCATION").expect("All tracks must have LOCATION element");
+        let elem = node.get_element_with_name("LOCATION")
+            .expect("All tracks must have LOCATION element");
         TrackLocation {
             volume: get_element_attribute(elem, "VOLUME").expect("VOLUME should always be set"),
             path: get_element_attribute(elem, "DIR").expect("DIR should always be set"),
@@ -213,7 +213,7 @@ impl Track {
            artist: Option<Rc<RefCell<Artist>>>,
            album: Option<Rc<RefCell<Album>>>)
            -> Result<Track, &'static str> {
-        let title = get_attribute(&node.attributes, "TITLE");
+        let title = node.get_attribute("TITLE");
         if title.is_none() {
             return Err("ENTRY does not have title");
         }
@@ -223,11 +223,11 @@ impl Track {
                location: TrackLocation::new_from_node(node),
                artist: artist.as_ref().map(|x| Rc::downgrade(x)),
                album: album.as_ref().map(|x| Rc::downgrade(x)),
-               album_track_number: get_elements_attribute(&node.elements, "ALBUM", "TRACK")
+               album_track_number: node.get_elements_attribute("ALBUM", "TRACK")
                    .and_then(|x| x.parse().ok()),
-               duration_seconds: get_elements_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
+               duration_seconds: node.get_elements_attribute("INFO", "PLAYTIME_FLOAT")
                    .and_then(|x| x.parse().ok()),
-               bpm: get_elements_attribute(&node.elements, "INFO", "PLAYTIME_FLOAT")
+               bpm: node.get_elements_attribute("INFO", "PLAYTIME_FLOAT")
                    .and_then(|x| x.parse().ok()),
            })
     }
