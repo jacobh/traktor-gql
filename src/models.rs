@@ -1,5 +1,6 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 use parser::{Node, NodeType, get_element_with_name, get_attribute, get_element_attribute,
              get_elements_attribute};
@@ -19,6 +20,12 @@ impl CollectionData {
             albums: Vec::new(),
             playlists: Vec::new(),
         }
+    }
+    fn get_track_map(&self) -> HashMap<String, Rc<Track>> {
+        self.tracks
+            .iter()
+            .map(|track| (track.location.as_primary_key(), track.clone()))
+            .collect()
     }
     fn get_or_create_album_for_node(&mut self, node: &Node) -> Option<Rc<RefCell<Album>>> {
         let title = get_elements_attribute(&node.elements, "ALBUM", "TITLE");
@@ -81,16 +88,21 @@ impl CollectionData {
         }
     }
     fn add_playlist_node(&mut self, node: &Node) {
-        let primary_keys: Vec<String> = node.elements
-            .iter()
-            .filter_map(|elem| get_element_attribute(elem, "KEY"))
-            .collect();
+        let tracks: Vec<Weak<Track>> = {
+            let track_map = self.get_track_map();
+            node.elements
+                .iter()
+                .filter_map(|elem| get_element_attribute(elem, "KEY"))
+                .filter_map(|key| track_map.get(&key))
+                .map(|track| Rc::downgrade(track))
+                .collect()
+        };
 
-        println!("tracks in playlist: {}", primary_keys.len());
+        println!("tracks in playlist: {}", tracks.len());
 
         if let Some(name) = get_attribute(&node.attributes, "NAME") {
             self.playlists
-                .push(Rc::new(RefCell::new(Playlist::new(name))));
+                .push(Rc::new(RefCell::new(Playlist::new(name, tracks))));
         }
     }
     pub fn add_node(&mut self, node: &Node) {
@@ -228,10 +240,10 @@ pub struct Playlist {
     tracks: Vec<Weak<Track>>,
 }
 impl Playlist {
-    fn new(name: String) -> Playlist {
+    fn new(name: String, tracks: Vec<Weak<Track>>) -> Playlist {
         Playlist {
             name: name,
-            tracks: vec![],
+            tracks: tracks,
         }
     }
 }
