@@ -68,11 +68,28 @@ impl Iterator for CollectionParser {
                                     };
                                     continue;
                                 }
-                                _ => {
+                                RootNode::Collection => {
                                     match node_attributes.is_empty() {
                                         true => {
                                             if let XmlEvent::StartElement { attributes, .. } = e {
                                                 node_attributes = attributes;
+                                            }
+                                        }
+                                        false => {
+                                            node_elements.push(e);
+                                        }
+                                    }
+                                }
+                                RootNode::Playlists => {
+                                    match node_attributes.is_empty() {
+                                        true => {
+                                            if let XmlEvent::StartElement { attributes, .. } = e {
+                                                if let Some(node_type) =
+                                                    get_attribute(&attributes, "TYPE") {
+                                                    if node_type == "PLAYLIST" {
+                                                        node_attributes = attributes;
+                                                    }
+                                                }
                                             }
                                         }
                                         false => {
