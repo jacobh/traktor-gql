@@ -127,9 +127,9 @@ impl Iterator for CollectionParser {
     }
 }
 
-fn get_element_with_name<'a, 'b>(elements: &'a NodeElements,
-                                 lookup_name: &'b str)
-                                 -> Option<&'a XmlEvent> {
+pub fn get_element_with_name<'a, 'b>(elements: &'a NodeElements,
+                                     lookup_name: &'b str)
+                                     -> Option<&'a XmlEvent> {
     elements
         .iter()
         .find(|x| match *x {

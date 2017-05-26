@@ -1,7 +1,8 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-use parser::{Node, NodeType, get_attribute, get_element_attribute, get_elements_attribute};
+use parser::{Node, NodeType, get_element_with_name, get_attribute, get_element_attribute,
+             get_elements_attribute};
 
 #[allow(dead_code)]
 pub struct CollectionData {
@@ -167,8 +168,29 @@ impl PartialEq for Album {
 }
 
 #[allow(dead_code)]
+struct TrackLocation {
+    volume: String,
+    path: String,
+    filename: String,
+}
+impl TrackLocation {
+    fn new_from_node(node: &Node) -> TrackLocation {
+        let elem = get_element_with_name(&node.elements, "LOCATION").expect("All tracks must have LOCATION element");
+        TrackLocation {
+            volume: get_element_attribute(elem, "VOLUME").expect("VOLUME should always be set"),
+            path: get_element_attribute(elem, "DIR").expect("DIR should always be set"),
+            filename: get_element_attribute(elem, "FILE").expect("FILE should always be set"),
+        }
+    }
+    fn as_primary_key(&self) -> String {
+        format!("{}{}{}", self.volume, self.path, self.filename)
+    }
+}
+
+#[allow(dead_code)]
 pub struct Track {
     pub title: String,
+    location: TrackLocation,
     artist: Option<Weak<RefCell<Artist>>>,
     album: Option<Weak<RefCell<Album>>>,
     album_track_number: Option<u16>,
@@ -187,6 +209,7 @@ impl Track {
 
         Ok(Track {
                title: title.unwrap(),
+               location: TrackLocation::new_from_node(node),
                artist: artist.as_ref().map(|x| Rc::downgrade(x)),
                album: album.as_ref().map(|x| Rc::downgrade(x)),
                album_track_number: get_elements_attribute(&node.elements, "ALBUM", "TRACK")
