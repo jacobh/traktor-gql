@@ -10,7 +10,7 @@ pub struct CollectionData {
     pub tracks: Vec<Rc<Track>>,
     pub artists: Vec<Rc<RefCell<Artist>>>,
     pub albums: Vec<Rc<RefCell<Album>>>,
-    pub playlists: Vec<Rc<RefCell<Playlist>>>,
+    pub playlists: Vec<Rc<Playlist>>,
 }
 impl CollectionData {
     pub fn new() -> CollectionData {
@@ -101,8 +101,7 @@ impl CollectionData {
         println!("tracks in playlist: {}", tracks.len());
 
         if let Some(name) = get_attribute(&node.attributes, "NAME") {
-            self.playlists
-                .push(Rc::new(RefCell::new(Playlist::new(name, tracks))));
+            self.playlists.push(Rc::new(Playlist::new(name, tracks)));
         }
     }
     pub fn add_node(&mut self, node: &Node) {
